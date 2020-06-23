@@ -48,6 +48,7 @@ ONNX_ML = not bool(os.getenv('ONNX_ML') == '0')
 ONNX_VERIFY_PROTO3 = bool(os.getenv('ONNX_VERIFY_PROTO3') == '1')
 ONNX_NAMESPACE = os.getenv('ONNX_NAMESPACE', 'onnx')
 ONNX_BUILD_TESTS = bool(os.getenv('ONNX_BUILD_TESTS') == '1')
+ONNX_NO_TESTS = bool(os.getenv('ONNX_NO_TESTS') == '1')
 
 DEBUG = bool(os.getenv('DEBUG'))
 COVERAGE = bool(os.getenv('COVERAGE'))
@@ -302,6 +303,15 @@ install_requires.extend([
 ])
 
 ################################################################################
+# Package Data
+################################################################################
+package_data = {
+    'test_data': ['onnx/backend/test/data *']
+}
+if ONNX_NO_TESTS:
+    del package_data['test_data']
+
+################################################################################
 # Test
 ################################################################################
 
@@ -326,7 +336,7 @@ setuptools.setup(
     cmdclass=cmdclass,
     packages=packages,
     license='MIT',
-    include_package_data=True,
+    package_data=package_data,
     install_requires=install_requires,
     setup_requires=setup_requires,
     tests_require=tests_require,
