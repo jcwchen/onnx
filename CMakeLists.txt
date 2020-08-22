@@ -241,8 +241,8 @@ function(RELATIVE_PROTOBUF_GENERATE_CPP NAME SRCS HDRS ROOT_DIR DEPEND)
         if(NOT WIN32)
           # If onnx was packaged to pypi from Windows, protoc-gen-mypy.py is
           # missing the +x flag. Add it.
-          execute_process(COMMAND chmod +x ${ROOT_DIR}/tools/protoc-gen-mypy.py)
-          set(PROTOC_MYPY_PLUGIN_FILE ${ROOT_DIR}/tools/protoc-gen-mypy.py)
+          execute_process(COMMAND chmod +x ${ROOT_DIR}/tools/protoc-gen-mypy.sh)
+          set(PROTOC_MYPY_PLUGIN_FILE ${ROOT_DIR}/tools/protoc-gen-mypy.sh)
         else(NOT WIN32)
           set(PROTOC_MYPY_PLUGIN_FILE ${ROOT_DIR}/tools/protoc-gen-mypy.bat)
         endif()
