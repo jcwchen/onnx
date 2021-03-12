@@ -19,7 +19,8 @@ export NUM_PROCESSOR=`grep -c ^processor /proc/cpuinfo`
 
 ONNX_PATH=$(pwd)
 cd ..
-git clone https://github.com/protocolbuffers/protobuf.git
+curl -L -O https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
+tar -xzf protobuf-2.6.1.tar.gz -C protobuf --strip-components 1
 cd protobuf
 git checkout v2.6.1
 git submodule update --init --recursive
