@@ -3,7 +3,7 @@
 set -e -x
 
 # CLI arguments
-PY_VERSIONS=$1
+PY_VERSION=$1
 PLAT=$2
 BUILD_REQUIREMENTS='numpy==1.16.6 protobuf==3.11.3'
 SYSTEM_PACKAGES='cmake3'
@@ -19,10 +19,10 @@ export NUM_PROCESSOR=`grep -c ^processor /proc/cpuinfo`
 
 ONNX_PATH=$(pwd)
 cd ..
-git clone https://github.com/protocolbuffers/protobuf.git
+curl -L -O https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
+mkdir protobuf
+tar -xzf protobuf-2.6.1.tar.gz -C protobuf --strip-components 1
 cd protobuf
-git checkout 3.11.x
-git submodule update --init --recursive
 ./autogen.sh --disable-shared --enable-pic
 
 CFLAGS="-fPIC -g -O2" CXXFLAGS="-fPIC -g -O2" ./configure --disable-shared
@@ -36,11 +36,11 @@ cd $ONNX_PATH
 # Need to be updated if there is a new Python Version
 declare -A python_map=( ["3.5"]="cp35-cp35m" ["3.6"]="cp36-cp36m" ["3.7"]="cp37-cp37m" ["3.8"]="cp38-cp38" ["3.9"]="cp39-cp39")
 declare -A python_include=( ["3.5"]="3.5m" ["3.6"]="3.6m" ["3.7"]="3.7m" ["3.8"]="3.8" ["3.9"]="3.9")
-PY_VER=${python_map[$PY_VERSIONS]}
+PY_VER=${python_map[$PY_VERSION]}
 
 # set ONNX build environments
 export ONNX_ML=1
-export CMAKE_ARGS="-DPYTHON_INCLUDE_DIR=/opt/python/${PY_VER}/include/python${python_include[$PY_VERSIONS]}"
+export CMAKE_ARGS="-DPYTHON_INCLUDE_DIR=/opt/python/${PY_VER}/include/python${python_include[$PY_VERSION]}"
 
 # Update pip
 /opt/python/"${PY_VER}"/bin/pip install --upgrade --no-cache-dir pip
@@ -64,9 +64,6 @@ if [[ -f "$failed_wheels" ]]; then
     cat failed-wheels
     exit 1
 fi
-
-# Remove useless *-linux*.whl; only keep -manylinux*.whl
-rm -f dist/*-linux*.whl
 
 echo "Succesfully build wheels:"
 find . -type f -iname "*-manylinux*.whl"
