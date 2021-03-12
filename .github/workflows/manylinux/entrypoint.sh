@@ -23,8 +23,6 @@ curl -L -O https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-
 mkdir protobuf
 tar -xzf protobuf-2.6.1.tar.gz -C protobuf --strip-components 1
 cd protobuf
-git checkout v2.6.1
-git submodule update --init --recursive
 ./autogen.sh --disable-shared --enable-pic
 
 CFLAGS="-fPIC -g -O2" CXXFLAGS="-fPIC -g -O2" ./configure --disable-shared
