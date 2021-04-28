@@ -47,7 +47,7 @@ jobs:
 
       git clone https://github.com/protocolbuffers/protobuf.git
       cd protobuf
-      git checkout 3.11.x
+      git checkout v3.11.3
       git submodule update --init --recursive
       mkdir build_source && cd build_source
 
@@ -143,6 +143,6 @@ jobs:
       fi
       python -m pip uninstall -y onnx
       rm -rf .setuptools-cmake-build
-      python -m pip install -q .
+      python -m pip install -q.
 
     displayName: 'Run ONNX tests'
