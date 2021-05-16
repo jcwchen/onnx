@@ -96,7 +96,7 @@ For an operator input/output's differentiability, it can be differentiable,
 |<a href="#Or">Or</a>|<a href="Changelog.md#Or-7">7</a>, <a href="Changelog.md#Or-1">1</a>|
 |<a href="#PRelu">PRelu</a>|<a href="Changelog.md#PRelu-9">9</a>, <a href="Changelog.md#PRelu-7">7</a>, <a href="Changelog.md#PRelu-6">6</a>, <a href="Changelog.md#PRelu-1">1</a>|
 |<a href="#Pad">Pad</a>|<a href="Changelog.md#Pad-13">13</a>, <a href="Changelog.md#Pad-11">11</a>, <a href="Changelog.md#Pad-2">2</a>, <a href="Changelog.md#Pad-1">1</a>|
-|<a href="#Pow">Pow</a>|<a href="Changelog.md#Pow-13">13</a>, <a href="Changelog.md#Pow-12">12</a>, <a href="Changelog.md#Pow-7">7</a>, <a href="Changelog.md#Pow-1">1</a>|
+|<a href="#Pow">Pow</a>|<a href="Changelog.md#Pow-15">15</a>, <a href="Changelog.md#Pow-13">13</a>, <a href="Changelog.md#Pow-12">12</a>, <a href="Changelog.md#Pow-7">7</a>, <a href="Changelog.md#Pow-1">1</a>|
 |<a href="#QLinearConv">QLinearConv</a>|<a href="Changelog.md#QLinearConv-10">10</a>|
 |<a href="#QLinearMatMul">QLinearMatMul</a>|<a href="Changelog.md#QLinearMatMul-10">10</a>|
 |<a href="#QuantizeLinear">QuantizeLinear</a>|<a href="Changelog.md#QuantizeLinear-13">13</a>, <a href="Changelog.md#QuantizeLinear-10">10</a>|
@@ -3508,7 +3508,7 @@ expect(convinteger_node, inputs=[x, w, x_zero_point], outputs=[y],
   output_shape can also be explicitly specified in which case pads values are auto generated using these equations:
   
     total_padding[i] = stride[i] * (input_size[i] - 1) + output_padding[i] + ((kernel_shape[i] - 1) * dilations[i] + 1) - output_shape[i]
-    If (auto_pads != SAME_UPPER): pads[start_i] = total_padding[i]/2; pads[end_i] = total_padding[i] - (total_padding[i]/2)
+    If (auto_pads == SAME_UPPER): pads[start_i] = total_padding[i]/2; pads[end_i] = total_padding[i] - (total_padding[i]/2)
     Else: pads[start_i] = total_padding[i] - (total_padding[i]/2); pads[end_i] = (total_padding[i]/2).
   
       
@@ -3814,7 +3814,7 @@ W = np.array([[[[1., 1., 1.],  # (1, 2, 3, 3)
                 [1., 1., 1.],
                 [1., 1., 1.]]]]).astype(np.float32)
 
-node = onnx.helper.make_node("ConvTranspose", ["X", "W"], ["Y"], auto_pad="SAME_LOWER", strides=[2, 2])
+node = onnx.helper.make_node("ConvTranspose", ["X", "W"], ["Y"], auto_pad="SAME_UPPER", strides=[2, 2])
 
 y = np.array([[[[0., 0., 1., 1., 3., 2.],
                 [0., 0., 1., 1., 3., 2.],
@@ -6384,10 +6384,8 @@ expect(node, inputs=[data, indices.astype(np.int64)], outputs=[y],
     ]
     axis = 1
     output = [
-        [
-          [1, 1],
-          [4, 3],
-        ],
+        [1, 1],
+        [4, 3],
     ]
   ```
   Example 2:
@@ -6403,10 +6401,8 @@ expect(node, inputs=[data, indices.astype(np.int64)], outputs=[y],
     ]
     axis = 0
     output = [
-        [
-          [4, 8, 3],
-          [7, 2, 3],
-        ],
+        [4, 8, 3],
+        [7, 2, 3],
     ]
   ```
 
@@ -7529,9 +7525,8 @@ expect(node, inputs=[x], outputs=[y],
   
    Hardmax(element in input, axis) = 1 if the element is the first maximum value along the specified axis, 0 otherwise
   
-  The input does not need to explicitly be a 2D vector. The "axis" attribute
-  indicates the dimension along which Hardmax will be performed.
-  The output tensor has the same shape
+  The "axis" attribute indicates the dimension along which Hardmax
+  will be performed. The output tensor has the same shape
   and contains the Hardmax values of the corresponding input.
 
 #### Version
@@ -7547,7 +7542,7 @@ Other versions of this operator: <a href="Changelog.md#Hardmax-1">1</a>, <a href
 <dd>
 Describes the dimension Hardmax will be performed on.
 Negative value means counting dimensions
-from the back. Accepted range is [-r, r-1] where r = rank(input).,
+from the back. Accepted range is [-r, r-1] where r = rank(input).
 </dd>
 </dl>
 
@@ -7555,14 +7550,14 @@ from the back. Accepted range is [-r, r-1] where r = rank(input).,
 
 <dl>
 <dt><tt>input</tt> (differentiable) : T</dt>
-<dd>The input tensor that's coerced into a 2D matrix of size (NxD) as described above.</dd>
+<dd>The input tensor of rank >= axis.</dd>
 </dl>
 
 #### Outputs
 
 <dl>
 <dt><tt>output</tt> (differentiable) : T</dt>
-<dd>The output values with the same shape as input tensor (the original size without coercion).</dd>
+<dd>The output values with the same shape as the input tensor.</dd>
 </dl>
 
 #### Type Constraints
@@ -8890,9 +8885,8 @@ expect(node, inputs=[x], outputs=[y],
   
    LogSoftmax(input, axis) = Log(Softmax(input, axis=axis))
   
-  The input does not need to explicitly be a 2D vector. The "axis" attribute
-  indicates the dimension along which LogSoftmax will be performed.
-  The output tensor has the same shape
+  The "axis" attribute indicates the dimension along which LogSoftmax
+  will be performed. The output tensor has the same shape
   and contains the LogSoftmax values of the corresponding input.
 
 #### Version
@@ -8908,7 +8902,7 @@ Other versions of this operator: <a href="Changelog.md#LogSoftmax-1">1</a>, <a h
 <dd>
 Describes the dimension LogSoftmax will be performed on.
 Negative value means counting dimensions
-from the back. Accepted range is [-r, r-1] where r = rank(input).,
+from the back. Accepted range is [-r, r-1] where r = rank(input).
 </dd>
 </dl>
 
@@ -8916,14 +8910,14 @@ from the back. Accepted range is [-r, r-1] where r = rank(input).,
 
 <dl>
 <dt><tt>input</tt> (differentiable) : T</dt>
-<dd>The input tensor that's coerced into a 2D matrix of size (NxD) as described above.</dd>
+<dd>The input tensor of rank >= axis.</dd>
 </dl>
 
 #### Outputs
 
 <dl>
 <dt><tt>output</tt> (differentiable) : T</dt>
-<dd>The output values with the same shape as input tensor (the original size without coercion).</dd>
+<dd>The output values with the same shape as the input tensor.</dd>
 </dl>
 
 #### Type Constraints
@@ -12926,9 +12920,9 @@ for mode in ['edge', 'reflect']:
 
 #### Version
 
-This version of the operator has been available since version 13 of the default ONNX operator set.
+This version of the operator has been available since version 15 of the default ONNX operator set.
 
-Other versions of this operator: <a href="Changelog.md#Pow-1">1</a>, <a href="Changelog.md#Pow-7">7</a>, <a href="Changelog.md#Pow-12">12</a>
+Other versions of this operator: <a href="Changelog.md#Pow-1">1</a>, <a href="Changelog.md#Pow-7">7</a>, <a href="Changelog.md#Pow-12">12</a>, <a href="Changelog.md#Pow-13">13</a>
 
 #### Inputs
 
@@ -12951,7 +12945,7 @@ Other versions of this operator: <a href="Changelog.md#Pow-1">1</a>, <a href="Ch
 <dl>
 <dt><tt>T</tt> : tensor(int32), tensor(int64), tensor(float16), tensor(float), tensor(double), tensor(bfloat16)</dt>
 <dd>Constrain input X and output types to float/int tensors.</dd>
-<dt><tt>T1</tt> : tensor(uint8), tensor(uint16), tensor(uint32), tensor(uint64), tensor(int8), tensor(int16), tensor(int32), tensor(int64), tensor(float16), tensor(float), tensor(double)</dt>
+<dt><tt>T1</tt> : tensor(uint8), tensor(uint16), tensor(uint32), tensor(uint64), tensor(int8), tensor(int16), tensor(int32), tensor(int64), tensor(float16), tensor(float), tensor(double), tensor(bfloat16)</dt>
 <dd>Constrain input Y types to float/int tensors.</dd>
 </dl>
 
@@ -19186,9 +19180,8 @@ expect(node, inputs=[x, starts, ends, axes, steps], outputs=[y],
   
    Softmax(input, axis) = Exp(input) / ReduceSum(Exp(input), axis=axis, keepdims=1) 
   
-  The input does not need to explicitly be a 2D vector. The "axis" attribute
-  indicates the dimension along which Softmax will be performed.
-  The output tensor has the same shape
+  The "axis" attribute indicates the dimension along which Softmax
+  will be performed. The output tensor has the same shape
   and contains the Softmax values of the corresponding input.
 
 #### Version
@@ -19204,7 +19197,7 @@ Other versions of this operator: <a href="Changelog.md#Softmax-1">1</a>, <a href
 <dd>
 Describes the dimension Softmax will be performed on.
 Negative value means counting dimensions
-from the back. Accepted range is [-r, r-1] where r = rank(input).,
+from the back. Accepted range is [-r, r-1] where r = rank(input).
 </dd>
 </dl>
 
@@ -19212,14 +19205,14 @@ from the back. Accepted range is [-r, r-1] where r = rank(input).,
 
 <dl>
 <dt><tt>input</tt> (differentiable) : T</dt>
-<dd>The input tensor that's coerced into a 2D matrix of size (NxD) as described above.</dd>
+<dd>The input tensor of rank >= axis.</dd>
 </dl>
 
 #### Outputs
 
 <dl>
 <dt><tt>output</tt> (differentiable) : T</dt>
-<dd>The output values with the same shape as input tensor (the original size without coercion).</dd>
+<dd>The output values with the same shape as the input tensor.</dd>
 </dl>
 
 #### Type Constraints
