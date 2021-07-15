@@ -129,8 +129,8 @@ class Loop(Base):
         # Return a sequence of tensors of
         #   [[x1], [x1, x2], ..., [x1, ..., xN]]
 
-        seq_in = onnx.helper.make_sequence_value_info('seq_in', onnx.TensorProto.FLOAT, None)
-        seq_out = onnx.helper.make_sequence_value_info('seq_out', onnx.TensorProto.FLOAT, None)
+        seq_in = onnx.helper.make_tensor_sequence_value_info('seq_in', onnx.TensorProto.FLOAT, None)
+        seq_out = onnx.helper.make_tensor_sequence_value_info('seq_out', onnx.TensorProto.FLOAT, None)
         cond_in = onnx.helper.make_tensor_value_info('cond_in', onnx.TensorProto.BOOL, [])
         cond_out = onnx.helper.make_tensor_value_info('cond_out', onnx.TensorProto.BOOL, [])
         iter_count = onnx.helper.make_tensor_value_info('iter_count', onnx.TensorProto.INT64, [])
@@ -236,4 +236,7 @@ class Loop(Base):
         cond = np.array(1).astype(np.bool)
         expect(node, inputs=[trip_count, cond, seq_empty], outputs=[seq_res],
                name='test_loop13_seq', opset_imports=[onnx.helper.make_opsetid("", 13)],
-               input_types=[onnx.TensorProto.INT64, onnx.TensorProto.BOOL, onnx.TensorProto.FLOAT])
+               input_type_protos=[onnx.helper.make_tensor_type_proto(onnx.TensorProto.INT64, trip_count.shape),
+                                  onnx.helper.make_tensor_type_proto(onnx.TensorProto.BOOL, cond.shape),
+                                  onnx.helper.make_sequence_type_proto(
+                                      onnx.helper.make_tensor_type_proto(onnx.TensorProto.FLOAT, []))])

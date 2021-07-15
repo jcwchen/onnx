@@ -2340,12 +2340,15 @@ ONNX_OPERATOR_SET_SCHEMA(
 
 static const char* QLinearMatMul_ver10_doc = R"DOC(
 Matrix product that behaves like numpy.matmul: https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.matmul.html.
-It consumes two quantized input tensors, their scales and zero points, scale and zero point of output, and computes the quantized output.
-The quantization formula is y = saturate((x / y_scale) + y_zero_point). For (x / y_scale), it is rounding to nearest ties to even.
-Refer to https://en.wikipedia.org/wiki/Rounding for details. Scale and zero point must have same shape.
-They must be either scalar (per tensor) or 1-D tensor (per row for 'a' and per column for 'b'). If scale and zero point are 1-D tensor,
-the number of elements of scale and zero point tensor of input 'a' and output 'y' should be equal to the number of rows of input 'a',
-and the number of elements of scale and zero point tensor of input 'b' should be equal to the number of columns of input 'b'.
+It consumes two quantized input tensors, their scales and zero points, scale and zero point of output, 
+and computes the quantized output. The quantization formula is y = saturate((x / y_scale) + y_zero_point). 
+For (x / y_scale), it is rounding to nearest ties to even. Refer to https://en.wikipedia.org/wiki/Rounding for details. 
+Scale and zero point must have same shape. They must be either scalar (per tensor) or N-D tensor 
+(per row for 'a' and per column for 'b'). Scalar refers to per tensor quantization whereas N-D refers to per row 
+or per column quantization. If the input is 2D of shape [M, K] then zero point and scale tensor may be 
+an M element vector [v_1, v_2, ..., v_M] for per row quantization and K element vector of shape [v_1, v_2, ..., v_K] 
+for per column quantization. If the input is N-D tensor with shape [D1, D2, M, K] then zero point and scale tensor may 
+have shape [D1, D2, M, 1] for per row quantization and shape [D1, D2, 1, K] for per column quantization.
 Production must never overflow, and accumulation may overflow if and only if in 32 bits.
 )DOC";
 
@@ -2509,9 +2512,10 @@ ONNX_OPERATOR_SET_SCHEMA(
         .Input(
             2,
             "a_zero_point",
-            "Zero point tensor for input 'A'. It's optional and default value is 0. It could be a scalar or a 1-D tensor, "
-            "which means a per-tensor or per-row quantization. If it's a 1-D tensor, its number of elements "
-            "should be equal to the number of rows of input 'A'.",
+            "Zero point tensor for input 'A'. It's optional and default value is 0. It could be a scalar or N-D tensor. "
+            "Scalar refers to per tensor quantization whereas N-D refers to per row quantization. "
+            "If the input is 2D of shape [M, K] then zero point tensor may be an M element vector [zp_1, zp_2, ..., zp_M]. "
+            "If the input is N-D tensor with shape [D1, D2, M, K] then zero point tensor may have shape [D1, D2, M, 1]. ",
             "T1",
             OpSchema::Optional,
             true,
@@ -2520,9 +2524,10 @@ ONNX_OPERATOR_SET_SCHEMA(
         .Input(
             3,
             "b_zero_point",
-            "Zero point tensor for input 'B'. It's optional and default value is 0.  It could be a scalar or a 1-D tensor, "
-            "which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number "
-            "of elements should be equal to the number of columns of input 'B'.",
+            "Zero point tensor for input 'B'. It's optional and default value is 0. It could be a scalar or a N-D tensor, "
+            "Scalar refers to per tensor quantization whereas N-D refers to per col quantization. "
+            "If the input is 2D of shape [K, N] then zero point tensor may be an N element vector [zp_1, zp_2, ..., zp_N]. "
+            "If the input is N-D tensor with shape [D1, D2, K, N] then zero point tensor may have shape [D1, D2, 1, N]. ",
             "T2",
             OpSchema::Optional,
             true,
@@ -2859,6 +2864,9 @@ bool BuildContextDependentFunctionBody(
   }
   auto input_type = ctx.getInputType(0)->tensor_type().elem_type();
   bool float_input = input_type == TensorProto_DataType_FLOAT;
+  auto reduction_attr_proto = ctx.getAttribute("reduction");
+  std::string reduction_attr =
+      reduction_attr_proto != nullptr && reduction_attr_proto->has_s() ? reduction_attr_proto->s() : "mean";
   std::vector<FunctionBodyHelper::NodeDef> body;
   body.push_back(
       {{"const_zero"},
@@ -2898,7 +2906,7 @@ bool BuildContextDependentFunctionBody(
          {"loss_NCdd", "const_zero", "const_one", "const_one"}});
 
     if (!ctx.hasInput(2)) {
-      if (ctx.getAttribute("reduction")->s() == "none") {
+      if (reduction_attr == "none") {
         body.push_back(
             {{"loss"},
              "Squeeze",
@@ -2908,7 +2916,7 @@ bool BuildContextDependentFunctionBody(
             {{"loss_Ndd"},
              "Squeeze",
              {"loss_N1dd", "axes"}});
-        if (ctx.getAttribute("reduction")->s() == "mean") {
+        if (reduction_attr == "mean") {
           body.push_back(
               {{"loss"},
                "ReduceMean",
@@ -2928,12 +2936,12 @@ bool BuildContextDependentFunctionBody(
           {{"loss_unweighted"},
            "Squeeze",
            {"loss_N1dd", "axes"}});
-      if (ctx.getAttribute("reduction")->s() == "none") {
+      if (reduction_attr == "none") {
         body.push_back({{"loss"}, "Mul", {"loss_unweighted", "weight_gather"}});
       } else {
         body.push_back(
             {{"loss_Ndd"}, "Mul", {"loss_unweighted", "weight_gather"}});
-        if (ctx.getAttribute("reduction")->s() == "mean") {
+        if (reduction_attr == "mean") {
           body.push_back(
               {{"loss_sum"},
                "ReduceSum",
@@ -3052,12 +3060,12 @@ bool BuildContextDependentFunctionBody(
         {{"loss_unweighted"},
          "Squeeze",
          {"loss_N1dd", "axes"}});
-    if (ctx.getAttribute("reduction")->s() == "none") {
+    if (reduction_attr == "none") {
       body.push_back({{"loss"}, "Mul", {"loss_unweighted", "weight_gather"}});
     } else {
       body.push_back(
           {{"loss_Ndd"}, "Mul", {"loss_unweighted", "weight_gather"}});
-      if (ctx.getAttribute("reduction")->s() == "mean") {
+      if (reduction_attr == "mean") {
         body.push_back(
             {{"loss_sum"},
              "ReduceSum",
@@ -3201,7 +3209,7 @@ ONNX_OPERATOR_SET_SCHEMA(
             TensorShapeProto* output_shape =
                 ctx.getOutputType(0)->mutable_tensor_type()->mutable_shape();
 
-            if (ctx.getAttribute("reduction")->s() == "none") {
+            if (getAttribute(ctx, "reduction", "mean") == "none") {
               // output tensor is of shape (N, d1, d2, ..., dk) if
               // reduction attribute is "none".
               for (int i = 0; i < input_rank - 1; i++) {
